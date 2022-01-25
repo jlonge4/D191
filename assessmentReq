@@ -1,0 +1,23 @@
+Section A: 
+	Real world business report basis: Which store has the most film rentals per month?
+
+A1: 
+	Describe the data used for the report: The data I’ve chosen to use for my report includes the 	rental_id, rental_date, store_id, and store_address. These values should provide the necessary 	perspective to calculate which store has the most film rentals per month.
+
+A2:
+	The tables that will provide this data are the rentals, inventory, store, and address tables.
+
+A3:
+	The specific fields to be included in the detailed table are the rental date, the rental_id, the 	store_id, and the store_address.
+	The specific fields to be included in the summary table will be the store_id, store_address, and 	the number_rentals.
+
+A4:
+	The rental_id field will need transformation by way of an aggregate COUNT function
+	that will count the number of rows returned for the current month for each store_id.
+
+A5: 	
+	Detailed report business use: Provides a large overview of rentals, their ids, the timestamp of 	incidence, store id, and store address.
+	Summary report business use: Provides a filtered view of exactly how many rentals each store 	has for the current month.
+
+A6:
+	The report should be refreshed monthly to remain relevant to stakeholders.
