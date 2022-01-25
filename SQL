@@ -1,74 +1,126 @@
+CREATE TABLE IF NOT EXISTS rentals_per_month (
+	number_rentals INT,
+	rental_date TIMESTAMP,
+	store_id INT,
+	store_address VARCHAR(40)
+);
+
+SELECT * FROM rentals_per_month;
+
+------------------------------------------------------------
+INSERT INTO rentals_per_month(number_rentals,rental_date,store_id,store_address)
+SELECT	
+	rental.rental_id, rental.rental_date, store.store_id, address.address
+FROM
+	rental
+INNER JOIN inventory ON rental.inventory_id = inventory.inventory_id
+INNER JOIN store ON store.store_id = inventory.store_id
+INNER JOIN address ON address.address_id = store.address_id
+
+ORDER BY rental_date desc;
+
+------------------------------------------------------------
+
+------------------------------------------------------------
+
+------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS summary_rentals (
+	store_address VARCHAR(40),
+	store_id INT,
+	number_rentals INT
+);
+
+SELECT * FROM summary_rentals;
+------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION rentalsNum(store int)
+	RETURNS SETOF integer AS
+$func$
+SELECT COUNT(number_rentals)
+FROM rentals_per_month
+WHERE rental_date::date = date '2006-02-14'
+AND store_id = $1;
+$func$		LANGUAGE sql;
+
+------------------------------------------------------------
+
+
+
+
+INSERT INTO summary_rentals(number_rentals, store_id, store_address)
+SELECT distinct rentalsNum(rentals_per_month.store_id), store_id, store_address
+FROM 
+	rentals_per_month
+ORDER BY
+	store_id;
+
+------------------------------------------------------------
 -- CREATING THE FUNCTION-------------------------------------------------------------------------------------------------
 ---------------------Updating the summary table-----------------------------------------------------------------
 
-CREATE FUNCTION summary_refresh_fun()
+CREATE FUNCTION summary_table_refresh()
 RETURNS TRIGGER 
 LANGUAGE plpgsql
 AS $$ 
 BEGIN
 
-DELETE FROM summary;
+DELETE FROM summary_rentals;
 -- this will empty the summary table. 
 
-INSERT INTO summary (
-	SELECT 
-		concat_ws (', ', last_name, first_name) AS customer_name,
-		email,
-		COUNT(customer_id)
-	FROM detailed
-	GROUP BY customer_id, customer_name, email
-	-- HAVING count(customer_id) > 30
-	ORDER BY count(customer_id)DESC
-	LIMIT 100
-);
-
+INSERT INTO summary_rentals(number_rentals, store_id, store_address)
+SELECT distinct rentalsNum(rentals_per_month.store_id), store_id, store_address
+FROM 
+	rentals_per_month
+ORDER BY
+	store_id;
 RETURN NEW;
 END; $$
 
---This function will refresh the summary table with data taken from the detailed table
+--This function will refresh the summary table with data taken from the rentals_per_month table
 
 -- CREATING THE TRIGGER---------------------------------------------------------------------------------------------
 
-CREATE TRIGGER summary_refresh
-AFTER INSERT ON detailed
+CREATE TRIGGER summary_rentals_refresh
+AFTER INSERT ON rentals_per_month
 FOR EACH STATEMENT
-EXECUTE PROCEDURE summary_refresh_fun();
+EXECUTE PROCEDURE summary_table_refresh();
 
---This trigger will execute the function that I just created summary_refresh_fun()
--- when there is an insert into the detailed function.
 
---Lastly, Let's create the procedure.
 
 
 --CREATING THE PROCEDURE -----------------------------------------------------------------------------------------
 
 
-CREATE PROCEDURE refresh_tables()
+CREATE PROCEDURE refresh()
 LANGUAGE plpgsql
 AS $$ 
 BEGIN
 
-DELETE FROM detailed; -- this will empty the detailed table on any existing info.
+DELETE FROM rentals_per_month; -- this will empty the detailed table on any existing info.
+DELETE FROM summary_rentals;
 
-INSERT INTO detailed(
-	customer_id, -- customer
-	first_name, -- customer
-	last_name, -- customer
-	email, -- customer
-	rental_id, -- rental
-	rental_date, -- rental
-	return_date, -- rental
-	staff_id  --rental
-)
-SELECT 
-	c.customer_id, c.first_name, c.last_name, c.email,
-	r.rental_id, r.rental_date, r.return_date, r.staff_id
-FROM rental AS r 
-INNER JOIN customer AS c ON c.customer_id = r.customer_id;
---reinserting the new data into the detailed table 
+INSERT INTO rentals_per_month(number_rentals,rental_date,store_id,store_address)
+SELECT	
+	rental.rental_id, rental.rental_date, store.store_id, address.address
+FROM
+	rental
+INNER JOIN inventory ON rental.inventory_id = inventory.inventory_id
+INNER JOIN store ON store.store_id = inventory.store_id
+INNER JOIN address ON address.address_id = store.address_id
+
+ORDER BY rental_date desc;
+
+INSERT INTO summary_rentals(number_rentals, store_id, store_address)
+SELECT distinct rentalsNum(rentals_per_month.store_id), store_id, store_address
+FROM 
+	rentals_per_month
+ORDER BY
+	store_id;
 END;$$
 
 
 
 -- To call stored procedure
--- CALL refresh_tables();
+-- CALL refresh();
+
+------------------------------------------------------------
